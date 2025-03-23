@@ -4,15 +4,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Client } from '../types';
-import { Plus, Edit2, Trash, Phone, Mail, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash, Phone, Mail, Loader, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Schéma de validation pour le formulaire
 const clientSchema = z.object({
-  firstname: z.string().nonempty("Le prénom est requis"),
-  lastname: z.string().nonempty("Le nom est requis"),
-  email: z.string().email("Email invalide"),
-  phone: z.string()
+  firstname: z.string().nonempty('Le prénom est requis.'),
+  lastname: z.string().nonempty('Le nom est requis.'),
+  email: z.string().email('Email invalide.'),
+  phone: z.string(),
 });
 
 type ClientForm = z.infer<typeof clientSchema>;
@@ -21,7 +21,8 @@ const Clients = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { clients, createClient, updateClient, deleteClient } = useClients();
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const { clients, createClient, updateClient, deleteClient, deleteAllClients } = useClients();
 
   const { data = [], status } = clients;
 
@@ -62,30 +63,38 @@ const Clients = () => {
         lastname: data.lastname,
         email: data.email,
         phone: data.phone,
-        noShowCount: selectedClient?.noShowCount || 0
+        noShowCount: selectedClient?.noShowCount || 0,
       };
 
       if (selectedClient) {
         await updateClient.mutateAsync(clientData);
-        toast.success('Client mis à jour avec succès');
       } else {
         await createClient.mutateAsync(clientData);
-        toast.success('Client créé avec succès');
       }
       setIsModalOpen(false);
       reset();
-    } catch (error: unknown) {
-      toast.error('Erreur lors de la soumission du formulaire');
+    } catch (error) {
+      // L'erreur est déjà gérée dans le hook
     }
   };
 
   const handleDeleteClient = async (clientId: string) => {
+    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?');
+    if (confirmDelete) {
+      try {
+        await deleteClient.mutateAsync(clientId);
+      } catch (error) {
+        // L'erreur est déjà gérée dans le hook
+      }
+    }
+  };
+
+  const handleDeleteAllClients = async () => {
     try {
-      await deleteClient.mutateAsync(clientId);
-      toast.success('Client supprimé avec succès');
+      await deleteAllClients.mutateAsync();
+      setIsDeleteAllModalOpen(false);
     } catch (error) {
-      toast.error('Erreur lors de la suppression du client');
-      // console.error('Erreur suppression client:', error);
+      // L'erreur est déjà gérée dans le hook
     }
   };
 
@@ -100,7 +109,7 @@ const Clients = () => {
   if (status === 'error') {
     return (
       <div className="text-center text-red-600 py-8">
-        Une erreur est survenue lors du chargement des clients
+        Une erreur est survenue lors du chargement des clients.
         <button
           onClick={() => clients.refetch()}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md"
@@ -115,18 +124,30 @@ const Clients = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Gestion des clients</h1>
-        <button
-          onClick={() => {
-            setSelectedClient(null);
-            reset();
-            setIsModalOpen(true);
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-          aria-label="Ajouter un nouveau client"
-        >
-          <Plus className="w-4 h-4" />
-          Nouveau client
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {
+              setSelectedClient(null);
+              reset();
+              setIsModalOpen(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+            aria-label="Ajouter un nouveau client"
+          >
+            <Plus className="w-4 h-4" />
+            Nouveau client
+          </button>
+          {data.length > 0 && (
+            <button
+              onClick={() => setIsDeleteAllModalOpen(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center gap-2"
+              aria-label="Supprimer tous les clients"
+            >
+              <Trash className="w-4 h-4" />
+              Tout supprimer
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex justify-end">
@@ -191,7 +212,7 @@ const Clients = () => {
           </div>
         )}
       </div>
-
+      {/* Modal pour l'ajout/modification d'un client */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 max-w-[90%]">
@@ -278,6 +299,49 @@ const Clients = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation pour supprimer tous les clients */}
+      {isDeleteAllModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 max-w-[90%]">
+            <div className="flex items-center gap-3 mb-4 text-red-600">
+              <AlertTriangle className="w-6 h-6" />
+              <h2 className="text-xl font-bold">Attention</h2>
+            </div>
+            <p className="mb-6 text-gray-800">
+              Vous êtes sur le point de supprimer <strong>tous les clients</strong>. Cette action est irréversible.
+              Êtes-vous sûr de vouloir continuer ?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllClients}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2"
+                disabled={deleteAllClients.isPending}
+              >
+                {deleteAllClients.isPending ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="w-4 h-4" />
+                    Tout supprimer
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

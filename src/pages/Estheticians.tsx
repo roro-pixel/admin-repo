@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useBarbers } from '../hooks/useBarbers';
+import { useEstheticians } from '../hooks/useEstheticians';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import type { Barber, ScheduleForm } from '../types';
+import type { Esthetician, EstheticianScheduleForm } from '../types';
 import { Plus, Edit2, Calendar, Phone, Mail, Loader, Trash, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -11,7 +11,7 @@ import { fr } from 'date-fns/locale';
 
 interface ScheduleDisplay {
   id: string;
-  barberId: string;
+  estheticianId: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
@@ -20,8 +20,8 @@ interface ScheduleDisplay {
   recurring: boolean;
 }
 
-// Schéma de validation pour les coiffeurs
-const barberSchema = z.object({
+// Schéma de validation pour les esthéticiennes
+const estheticianSchema = z.object({
   firstname: z.string().nonempty('Le prénom est requis.'),
   lastname: z.string().nonempty('Le nom est requis.'),
   email: z.string().email('Email invalide.'),
@@ -35,7 +35,7 @@ const barberSchema = z.object({
 
 // Schéma de validation pour l'emploi du temps
 const scheduleSchema = z.object({
-  barberId: z.string().nonempty("L'ID du coiffeur est requis"),
+  estheticianId: z.string().nonempty("L'ID de l'esthéticienne est requis"),
   // Modifiez cette ligne pour accepter explicitement des nombres
   workingDays: z.array(z.number()).min(1,"Au moins un jour de travail doit être sélectionné"),
   startHour: z.string().nonempty("L'heure de début est requise"),
@@ -63,7 +63,7 @@ const scheduleSchema = z.object({
     }, { message: "La date de fin ne peut pas être dans le passé" }),
 });
 
-type BarberForm = z.infer<typeof barberSchema>;
+type EstheticianForm = z.infer<typeof estheticianSchema>;
 type ScheduleFormInput = z.infer<typeof scheduleSchema>;
 
 // Fonction pour formater le numéro de téléphone
@@ -92,28 +92,26 @@ const generateMinuteOptions = (interval: number): string[] => {
   return minutes;
 };
 
-const Barbers = () => {
+const Estheticians = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isViewSchedulesModalOpen, setIsViewSchedulesModalOpen] = useState(false);
-  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
-  const [selectedBarberForSchedule, setSelectedBarberForSchedule] = useState<Barber | null>(null);
-  const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined);
+  const [selectedEsthetician, setSelectedEsthetician] = useState<Esthetician | null>(null);
+  const [selectedEstheticianForSchedule, setSelectedEstheticianForSchedule] = useState<Esthetician | null>(null);
+  const [selectedEstheticianId, setSelectedEstheticianId] = useState<string | undefined>(undefined);
 
   const { 
-    barbers, 
-    createBarber, 
-    updateBarber, 
-    deleteBarber, 
-    createSchedule, 
-    useBarberSchedules, 
-    deleteSchedule,
-    deleteAllBarberSchedules,  // Ajout des nouvelles méthodes
-    deleteAllSchedules        // Ajout des nouvelles méthodes
-  } = useBarbers();
+    estheticians, 
+    createEsthetician, 
+    updateEsthetician, 
+    deleteEsthetician, 
+    createEstheticianSchedule,
+    useEstheticianSchedules, 
+    deleteEstheticianSchedule 
+  } = useEstheticians();
 
-  const { data = [], isLoading, isError } = barbers;
-  const { data: schedules = [], isLoading: isLoadingSchedules } = useBarberSchedules(selectedBarberId);
+  const { data = [], isLoading, isError } = estheticians;
+  const { data: schedules = [], isLoading: isLoadingSchedules } = useEstheticianSchedules(selectedEstheticianId);
 
   const {
     register,
@@ -122,8 +120,8 @@ const Barbers = () => {
     formState: { errors },
     setValue,
     watch,
-  } = useForm<BarberForm>({
-    resolver: zodResolver(barberSchema),
+  } = useForm<EstheticianForm>({
+    resolver: zodResolver(estheticianSchema),
   });
 
   const {
@@ -187,43 +185,43 @@ const Barbers = () => {
     return 'Jour inconnu';
   };
 
-  // Ouvrir le modal pour éditer un coiffeur
-  const openEditModal = (barber: Barber) => {
-    setSelectedBarber(barber);
-    setValue('firstname', barber.firstname);
-    setValue('lastname', barber.lastname);
-    setValue('email', barber.email);
-    setValue('phone', formatPhoneNumber(barber.phone));
-    setValue('description', barber.description);
-    setValue('available', barber.available);
+  // Ouvrir le modal pour éditer une esthéticienne
+  const openEditModal = (esthetician: Esthetician) => {
+    setSelectedEsthetician(esthetician);
+    setValue('firstname', esthetician.firstname);
+    setValue('lastname', esthetician.lastname);
+    setValue('email', esthetician.email);
+    setValue('phone', formatPhoneNumber(esthetician.phone));
+    setValue('description', esthetician.description);
+    setValue('available', esthetician.available);
     setIsModalOpen(true);
   };
 
   // Ouvrir le modal pour afficher les emplois du temps
-  const openViewSchedulesModal = (barber: Barber) => {
-    setSelectedBarberId(barber.id);
-    setSelectedBarberForSchedule(barber);
+  const openViewSchedulesModal = (esthetician: Esthetician) => {
+    setSelectedEstheticianId(esthetician.id);
+    setSelectedEstheticianForSchedule(esthetician);
     setIsViewSchedulesModalOpen(true);
   };
 
   // Fonction pour supprimer un emploi du temps
   const handleDeleteSchedule = async (scheduleId: string) => {
     const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?');
-    if (confirmDelete && selectedBarberId) {
+    if (confirmDelete && selectedEstheticianId) {
       try {
-        await deleteSchedule.mutateAsync({ scheduleId: scheduleId, barberId: selectedBarberId });
+        await deleteEstheticianSchedule.mutateAsync({ scheduleId: scheduleId, estheticianId: selectedEstheticianId });
       } catch (error) {
         console.error('Erreur lors de la suppression de l\'emploi du temps:', error);
       }
     }
   };
 
-  // Soumettre le formulaire de coiffeur
-  const onSubmit = async (data: BarberForm) => {
+  // Soumettre le formulaire d'esthéticienne
+  const onSubmit = async (data: EstheticianForm) => {
     try {
       const formattedPhone = formatPhoneNumber(data.phone);
-      const barberData: Barber = {
-        id: selectedBarber?.id || '',
+      const estheticianData: Esthetician = {
+        id: selectedEsthetician?.id || '',
         firstname: data.firstname,
         lastname: data.lastname,
         email: data.email,
@@ -232,84 +230,80 @@ const Barbers = () => {
         available: data.available,
       };
 
-      if (selectedBarber) {
-        await updateBarber.mutateAsync(barberData);
-        toast.success('Coiffeur mis à jour avec succès.');
+      if (selectedEsthetician) {
+        await updateEsthetician.mutateAsync(estheticianData);
+        toast.success('Esthéticienne mise à jour avec succès.');
       } else {
-        await createBarber.mutateAsync(barberData);
-        toast.success('Coiffeur créé avec succès.');
+        await createEsthetician.mutateAsync(estheticianData);
+        toast.success('Esthéticienne créée avec succès.');
       }
       setIsModalOpen(false);
       reset();
     } catch (error) {
-      console.error('Erreur lors de la création/mise à jour du coiffeur:', error);
+      console.error('Erreur lors de la création/mise à jour de l\'esthéticienne:', error);
     }
   };
 
-  // Supprimer un coiffeur
-  const handleDeleteClick = async (barberId: string) => {
-    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer ce coiffeur ?');
+  // Supprimer une esthéticienne
+  const handleDeleteClick = async (estheticianId: string) => {
+    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer cette esthéticienne ?');
     if (confirmDelete) {
       try {
-        await deleteBarber.mutateAsync(barberId);
-        toast.success('Coiffeur supprimé avec succès.');
+        await deleteEsthetician.mutateAsync(estheticianId);
+        toast.success('Esthéticienne supprimée avec succès.');
       } catch (error) {
-        console.error('Erreur lors de la suppression du coiffeur:', error);
+        console.error('Erreur lors de la suppression de l\'esthéticienne:', error);
       }
     }
   };
 
   // Soumettre le formulaire d'emploi du temps
   const onSubmitSchedule = async (data: ScheduleFormInput) => {
-  console.log('Début de onSubmitSchedule');
-  try {
-    console.log('Données du formulaire:', data);
-    if (!selectedBarberForSchedule) {
-      throw new Error('Aucun coiffeur sélectionné.');
+    console.log('Début de onSubmitSchedule'); // Vérifiez que cette ligne s'affiche
+    try {
+      console.log('Données du formulaire:', data);
+      if (!selectedEstheticianForSchedule) {
+        throw new Error('Aucune esthéticienne sélectionnée.');
+      }
+  
+      // Vérifier que workingDays est bien un tableau
+      if (!Array.isArray(data.workingDays) || data.workingDays.length === 0) {
+        toast.error('Veuillez sélectionner au moins un jour de travail.');
+        return;
+      }
+  
+      // Convertir les valeurs de workingDays en nombres (si ce sont des chaînes)
+      const workingDays = data.workingDays.map(day => typeof day === 'string' ? parseInt(day, 10) : day);
+  
+      // Créer les dates pour startTime et endTime
+      const startTime = new Date();
+      startTime.setHours(Number(data.startHour), Number(data.startMinute), 0, 0);
+      
+      const endTime = new Date();
+      endTime.setHours(Number(data.endHour), Number(data.endMinute), 0, 0);
+  
+      const scheduleData: EstheticianScheduleForm = {
+        estheticianId: selectedEstheticianForSchedule.id,
+        workingDays: workingDays,
+        startTime: startTime,
+        endTime: endTime,
+        isRecurring: data.isRecurring,
+        effectiveFrom: data.effectiveFrom,
+        effectiveTo: data.effectiveTo,
+      };
+  
+      console.log('Données envoyées à l\'API:', scheduleData);
+      
+      await createEstheticianSchedule.mutateAsync(scheduleData);
+      
+      setIsScheduleModalOpen(false);
+      resetSchedule();
+      toast.success('Emploi du temps créé avec succès.');
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Une erreur est survenue lors de la création de l\'emploi du temps.');
     }
-
-    // Vérifier que workingDays est bien un tableau
-    if (!Array.isArray(data.workingDays) || data.workingDays.length === 0) {
-      toast.error('Veuillez sélectionner au moins un jour de travail.');
-      return;
-    }
-
-    // Convertir les valeurs de workingDays en nombres (si ce sont des chaînes)
-    const workingDays = data.workingDays.map(day => typeof day === 'string' ? parseInt(day, 10) : day);
-
-    // Créer les dates pour startTime et endTime
-    const startTime = new Date();
-    startTime.setHours(Number(data.startHour) + 1, Number(data.startMinute), 0, 0); // Ajouter 1 heure pour UTC+1
-
-    const endTime = new Date();
-    endTime.setHours(Number(data.endHour) + 1, Number(data.endMinute), 0, 0); // Ajouter 1 heure pour UTC+1
-
-    // Ajuster les dates effectiveFrom et effectiveTo (pas besoin de modifier les dates, seulement les heures)
-    const effectiveFrom = new Date(data.effectiveFrom);
-    const effectiveTo = new Date(data.effectiveTo);
-
-    const scheduleData: ScheduleForm = {
-      barberId: selectedBarberForSchedule.id,
-      workingDays: workingDays,
-      startTime: startTime, // Convertir en chaîne ISO pour l'envoi
-      endTime: endTime, // Convertir en chaîne ISO pour l'envoi
-      isRecurring: data.isRecurring,
-      effectiveFrom: effectiveFrom.toISOString().split('T')[0], // Convertir en chaîne ISO pour l'envoi
-      effectiveTo: effectiveTo.toISOString().split('T')[0], // Convertir en chaîne ISO pour l'envoi
-    };
-
-    console.log('Données envoyées à l\'API:', scheduleData);
-    
-    await createSchedule.mutateAsync(scheduleData);
-    
-    setIsScheduleModalOpen(false);
-    resetSchedule();
-    toast.success('Emploi du temps créé avec succès.');
-  } catch (error) {
-    console.error('Erreur:', error);
-    toast.error('Une erreur est survenue lors de la création de l\'emploi du temps.');
-  }
-};
+  };
   
   useEffect(() => {
     if (schedules && schedules.length > 0) {
@@ -324,9 +318,9 @@ const Barbers = () => {
   }, [schedules]);
 
   // Ouvrir le modal pour générer un emploi du temps
-  const openScheduleModal = (barber: Barber) => {
-    setSelectedBarberForSchedule(barber);
-    setScheduleValue('barberId', barber.id); // Pré-remplir l'ID du coiffeur
+  const openScheduleModal = (esthetician: Esthetician) => {
+    setSelectedEstheticianForSchedule(esthetician);
+    setScheduleValue('estheticianId', esthetician.id); // Pré-remplir l'ID de l'esthéticienne
     setIsScheduleModalOpen(true);
   };
 
@@ -341,7 +335,7 @@ const Barbers = () => {
   if (isError) {
     return (
       <div className="text-center text-red-600 py-8">
-        Une erreur est survenue lors du chargement des coiffeurs.
+        Une erreur est survenue lors du chargement des esthéticiennes.
       </div>
     );
   }
@@ -349,85 +343,70 @@ const Barbers = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des coiffeurs</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer tous les emplois du temps de tous les coiffeurs ?');
-              if (confirmDelete) {
-                deleteAllSchedules.mutateAsync();
-              }
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center gap-2"
-            aria-label="Supprimer tous les emplois du temps"
-          >
-            <Trash2 className="w-4 h-4" />
-            Supprimer tous les emplois du temps
-          </button>
-          <button
-            onClick={() => {
-              setSelectedBarber(null);
-              reset();
-              setIsModalOpen(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-            aria-label="Ajouter un nouveau coiffeur"
-          >
-            <Plus className="w-4 h-4" />
-            Nouveau coiffeur
-          </button>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Gestion des esthéticiennes</h1>
+        <button
+          onClick={() => {
+            setSelectedEsthetician(null);
+            reset();
+            setIsModalOpen(true);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+          aria-label="Ajouter une nouvelle esthéticienne"
+        >
+          <Plus className="w-4 h-4" />
+          Nouvelle esthéticienne
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {data && data.length > 0 ? (
-          data.map((barber: Barber) => (
-            <div key={barber.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          data.map((esthetician: Esthetician) => (
+            <div key={esthetician.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-gray-900">
-                    {barber.firstname} {barber.lastname}
+                    {esthetician.firstname} {esthetician.lastname}
                   </h3>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Phone className="w-4 h-4" />
-                      <span className="text-sm">{formatPhoneNumber(barber.phone) || 'Non renseigné'}</span>
+                      <span className="text-sm">{formatPhoneNumber(esthetician.phone) || 'Non renseigné'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Mail className="w-4 h-4" />
-                      <span className="text-sm">{barber.email}</span>
+                      <span className="text-sm">{esthetician.email}</span>
                     </div>
                   </div>
-                  {barber.description && (
-                    <p className="text-sm text-gray-600 mt-2">{barber.description}</p>
+                  {esthetician.description && (
+                    <p className="text-sm text-gray-600 mt-2">{esthetician.description}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => openEditModal(barber)}
+                    onClick={() => openEditModal(esthetician)}
                     className="text-gray-600 hover:text-blue-600 p-1"
-                    aria-label={`Modifier ${barber.firstname} ${barber.lastname}`}
+                    aria-label={`Modifier ${esthetician.firstname} ${esthetician.lastname}`}
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => openScheduleModal(barber)}
+                    onClick={() => openScheduleModal(esthetician)}
                     className="text-gray-600 hover:text-blue-600 p-1"
-                    aria-label={`Gérer la disponibilité de ${barber.firstname} ${barber.lastname}`}
+                    aria-label={`Gérer la disponibilité de ${esthetician.firstname} ${esthetician.lastname}`}
                   >
                     <Calendar className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => openViewSchedulesModal(barber)}
+                    onClick={() => openViewSchedulesModal(esthetician)}
                     className="text-gray-600 hover:text-blue-600 p-1"
-                    aria-label={`Voir les emplois du temps de ${barber.firstname} ${barber.lastname}`}
+                    aria-label={`Voir les emplois du temps de ${esthetician.firstname} ${esthetician.lastname}`}
                   >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteClick(barber.id)}
+                    onClick={() => handleDeleteClick(esthetician.id)}
                     className="text-gray-600 hover:text-red-600 p-1"
-                    aria-label={`Supprimer ${barber.firstname} ${barber.lastname}`}
+                    aria-label={`Supprimer ${esthetician.firstname} ${esthetician.lastname}`}
                   >
                     <Trash className="w-4 h-4" />
                   </button>
@@ -436,29 +415,29 @@ const Barbers = () => {
               <div className="flex items-center gap-2 mt-4">
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    barber.available ? 'bg-green-500' : 'bg-red-500'
+                    esthetician.available ? 'bg-green-500' : 'bg-red-500'
                   }`}
                   aria-hidden="true"
                 />
                 <span className="text-sm text-gray-600">
-                  {barber.available ? 'Disponible' : 'Indisponible'}
+                  {esthetician.available ? 'Disponible' : 'Indisponible'}
                 </span>
               </div>
             </div>
           ))
         ) : (
           <div className="col-span-full text-center text-gray-500 py-8">
-            Aucun coiffeur disponible
+            Aucune esthéticienne disponible
           </div>
         )}
       </div>
 
-      {/* Modal pour créer/modifier un coiffeur */}
+      {/* Modal pour créer/modifier une esthéticienne */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 max-w-[90%]">
             <h2 className="text-xl font-semibold mb-4 text-gray-900">
-              {selectedBarber ? 'Modifier le coiffeur' : 'Nouveau coiffeur'}
+              {selectedEsthetician ? 'Modifier l\'esthéticienne' : 'Nouvelle esthéticienne'}
             </h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
@@ -505,11 +484,11 @@ const Barbers = () => {
                 )}
               </div>
               <div>
-                <label htmlFor="barberPhone" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="estheticianPhone" className="block text-sm font-medium text-gray-700">
                   Téléphone
                 </label>
                 <input 
-                  id="barberPhone"
+                  id="estheticianPhone"
                   {...register('phone')} 
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="0XXXXXXXX"
@@ -520,15 +499,15 @@ const Barbers = () => {
                 )}
               </div>
               <div>
-                <label htmlFor="barberDescription" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="estheticianDescription" className="block text-sm font-medium text-gray-700">
                   Description
                 </label>
                 <textarea
-                  id="barberDescription"
+                  id="estheticianDescription"
                   {...register('description')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 resize-none"
                   rows={3}
-                  placeholder="Description du coiffeur"
+                  placeholder="Description de l'esthéticienne"
                 />
                 {errors.description && (
                   <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
@@ -560,9 +539,9 @@ const Barbers = () => {
                 <button
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-                  aria-label={selectedBarber ? 'Modifier le coiffeur' : 'Créer le coiffeur'}
+                  aria-label={selectedEsthetician ? 'Modifier l\'esthéticienne' : 'Créer l\'esthéticienne'}
                 >
-                  {selectedBarber ? 'Modifier' : 'Créer'}
+                  {selectedEsthetician ? 'Modifier' : 'Créer'}
                 </button>
               </div>
             </form>
@@ -575,7 +554,7 @@ const Barbers = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 max-w-[90%]">
             <h2 className="text-xl font-semibold mb-4 text-gray-900">
-              Générer un emploi du temps pour {selectedBarberForSchedule?.firstname} {selectedBarberForSchedule?.lastname}
+              Générer un emploi du temps pour {selectedEstheticianForSchedule?.firstname} {selectedEstheticianForSchedule?.lastname}
             </h2>
             <form onSubmit={handleSubmitSchedule(onSubmitSchedule)} className="space-y-4">
               <div>
@@ -759,10 +738,11 @@ const Barbers = () => {
       )}
       
       {/* Modal pour afficher les emplois du temps */}
-      {isViewSchedulesModalOpen && (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {isViewSchedulesModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-semibold mb-4 text-gray-900">
-              Emplois du temps de {selectedBarberForSchedule?.firstname} {selectedBarberForSchedule?.lastname}
+              Emplois du temps de {selectedEstheticianForSchedule?.firstname} {selectedEstheticianForSchedule?.lastname}
             </h2>
             
             {isLoadingSchedules ? (
@@ -822,7 +802,7 @@ const Barbers = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                Aucun emploi du temps disponible pour ce coiffeur
+                Aucun emploi du temps disponible pour cette esthéticienne
               </div>
             )}
             
@@ -830,26 +810,12 @@ const Barbers = () => {
               <button
                 onClick={() => {
                   setIsViewSchedulesModalOpen(false);
-                  setSelectedBarberId(undefined);
+                  setSelectedEstheticianId(undefined);
                 }}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
                 aria-label="Fermer"
               >
                 Fermer
-              </button>
-              <button
-                onClick={() => {
-                  const confirmDelete = window.confirm(`Êtes-vous sûr de vouloir supprimer tous les emplois du temps de ${selectedBarberForSchedule?.firstname} ${selectedBarberForSchedule?.lastname} ?`);
-                  if (confirmDelete && selectedBarberId) {
-                    deleteAllBarberSchedules.mutateAsync(selectedBarberId);
-                    setIsViewSchedulesModalOpen(false);
-                  }
-                }}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center gap-2"
-                aria-label="Supprimer tous les emplois du temps de ce coiffeur"
-              >
-                <Trash2 className="w-4 h-4" />
-                Tout supprimer
               </button>
             </div>
           </div>
@@ -859,4 +825,4 @@ const Barbers = () => {
   );
 };
 
-export default Barbers;
+export default Estheticians;

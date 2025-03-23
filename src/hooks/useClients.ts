@@ -4,28 +4,31 @@ import { useAuth } from './useAuth';
 import axios, { AxiosResponse } from 'axios';
 import type { Client } from '../types';
 
-// Création d'une instance API avec l'URL de base
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Fonction pour traiter les réponses de l'API
 const handleResponse = async <T>(response: AxiosResponse): Promise<T> => {
   const contentType = response.headers['content-type'];
 
+  // Si la réponse est une erreur (statut HTTP 4xx ou 5xx)
   if (response.status < 200 || response.status >= 300) {
-    let errorMessage = 'Une erreur est survenue';
+    let errorMessage = 'Une erreur est survenue. Veuillez réessayer plus tard.';
+
+    // Si la réponse contient du JSON, essayez d'extraire un message d'erreur
     if (contentType?.includes('application/json')) {
       const errorData = response.data;
       errorMessage = errorData.message || errorData.error || errorMessage;
-    } else {
-      errorMessage = response.statusText;
     }
+
+    // Lancer une erreur avec un message convivial
     throw new Error(errorMessage);
   }
 
+  // Si la réponse n'est pas du JSON, lancer une erreur conviviale
   if (!contentType || !contentType.includes('application/json')) {
-    throw new Error('La réponse du serveur n\'est pas un JSON valide');
+    throw new Error('La réponse du serveur est invalide. Veuillez contacter le support.');
   }
 
+  // Si tout va bien, retourner les données
   return response.data;
 };
 
@@ -33,124 +36,125 @@ export const useClients = () => {
   const queryClient = useQueryClient();
   const { getToken, isAuthenticated } = useAuth();
 
-  // Création d'une instance Axios pour ce hook spécifique
   const createApiInstance = () => {
     const token = getToken();
-    // console.log("Token utilisé dans useClients:", token);
-
     const instance = axios.create({
       baseURL: API_URL,
-      headers: token ? {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        'Accept': 'application/json'
-      } : undefined
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+            Accept: 'application/json',
+          }
+        : undefined,
     });
-
     return instance;
   };
 
-  // Fonction pour obtenir tous les clients
   const clients = useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients'], // Clé de requête sous forme de tableau
     queryFn: async () => {
       try {
         if (!isAuthenticated()) {
-          throw new Error('Vous devez être connecté pour accéder à cette ressource');
+          throw new Error('Vous devez être connecté pour accéder à cette fonctionnalité.');
         }
 
-        // console.log("Récupération des clients...");
         const api = createApiInstance();
         const response = await api.get<Client[]>('/client/admin/all');
-        // console.log("Réponse de l'API clients:", response);
-
         return handleResponse<Client[]>(response);
       } catch (error) {
-        // console.error('Erreur lors de la récupération des clients:', error);
-        toast.error('Erreur lors de la récupération des clients');
-        throw error;
+        throw new Error('Erreur lors du chargement des clients. Veuillez réessayer.');
       }
     },
-    enabled: isAuthenticated() // N'exécute la requête que si l'utilisateur est authentifié
+    enabled: isAuthenticated(),
   });
 
-  // Fonction pour créer un client
   const createClient = useMutation({
     mutationFn: async (client: Omit<Client, 'clientId'>) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour créer un client');
+        throw new Error('Vous devez être connecté pour créer un client.');
       }
 
-      // console.log("Création d'un client:", client);
       const api = createApiInstance();
       const response = await api.post<Client>('auth/admin/signup/client', client);
-      // console.log("Réponse création client:", response);
-
       return handleResponse<Client>(response);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Client créé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['clients'] }); // Utilisation d'un objet
+      toast.success('Client créé avec succès.');
     },
     onError: (error: Error | unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      toast.error(`Erreur lors de la création du client: ${errorMessage}`);
-      // console.error('Erreur création client:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      toast.error(`Erreur lors de la création du client : ${errorMessage}`);
     },
   });
 
-  // Fonction pour mettre à jour un client
   const updateClient = useMutation({
     mutationFn: async (client: Client) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour mettre à jour un client');
+        throw new Error('Vous devez être connecté pour modifier un client.');
       }
 
-      // console.log("Mise à jour du client:", client);
       const api = createApiInstance();
       const response = await api.put<Client>(`client/${client.id}/admin/update`, client);
-      // console.log("Réponse mise à jour client:", response);
-
       return handleResponse<Client>(response);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Client mis à jour avec succès');
+      queryClient.invalidateQueries({ queryKey: ['clients'] }); // Utilisation d'un objet
+      toast.success('Client mis à jour avec succès.');
     },
     onError: (error: Error | unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      toast.error(`Erreur lors de la mise à jour du client: ${errorMessage}`);
-      // console.error('Erreur mise à jour client:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      toast.error(`Erreur lors de la mise à jour du client : ${errorMessage}`);
     },
   });
 
-  // Fonction pour supprimer un client
   const deleteClient = useMutation({
     mutationFn: async (clientId: string) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour supprimer un client');
+        throw new Error('Vous devez être connecté pour supprimer un client.');
       }
 
-      // console.log("Suppression du client avec l'ID:", clientId);
       const api = createApiInstance();
       const response = await api.delete(`/client/${clientId}/delete`);
-      // console.log("Réponse suppression client:", response);
+      return handleResponse<void>(response);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] }); // Utilisation d'un objet
+      toast.success('Client supprimé avec succès.');
+    },
+    onError: (error: Error | unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      if (errorMessage.includes('réservé aux superviseurs')) {
+        toast.error('Cette action est réservée aux superviseurs.');
+      } else {
+        toast.error(`Erreur lors de la suppression du client : ${errorMessage}`);
+      }
+    },
+  });
 
+  const deleteAllClients = useMutation({
+    mutationFn: async () => {
+      if (!isAuthenticated()) {
+        throw new Error('Vous devez être connecté pour supprimer tous les clients.');
+      }
+
+      const api = createApiInstance();
+      const response = await api.delete('/client/admin/delete-all');
       return handleResponse<void>(response);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      // toast.success('Client supprimé avec succès');
+      toast.success('Tous les clients ont été supprimés avec succès.');
     },
     onError: (error: Error | unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
       if (errorMessage.includes('réservé aux superviseurs')) {
-        toast.error('Cette action est réservée aux superviseurs');
+        toast.error('Cette action est réservée aux superviseurs.');
       } else {
-        toast.error(`Erreur lors de la suppression du client: ${errorMessage}`);
+        toast.error(`Erreur lors de la suppression des clients : ${errorMessage}`);
       }
-      // console.error('Erreur suppression client:', error);
     },
   });
 
@@ -159,5 +163,6 @@ export const useClients = () => {
     createClient,
     updateClient,
     deleteClient,
+    deleteAllClients
   };
 };

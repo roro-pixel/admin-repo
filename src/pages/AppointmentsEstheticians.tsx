@@ -1,22 +1,22 @@
 import { useState, useMemo } from 'react';
-import { useAppointments } from '../hooks/useAppointments';
-import { useBarbers } from '../hooks/useBarbers';
+import { useAppointmentEstheticians } from '../hooks/useAppointmentEstheticians';
+import { useEstheticians } from '../hooks/useEstheticians';
 import { useClients } from '../hooks/useClients';
-import { useHaircuts } from '../hooks/useHaircuts';
+import { useBeautyServices } from '../hooks/useBeautyServices';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import type { Appointment, Client, Barber, Haircut, CreateAppointmentData, UpdateAppointmentData } from '../types';
+import type { EstheticianAppointment, Client, Esthetician, BeautyService, CreateEstheticianAppointmentData, UpdateEstheticianAppointmentData } from '../types';
 import { Plus, X, Check, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useQueryClient } from '@tanstack/react-query'; // Import de useQueryClient
+import { useQueryClient } from '@tanstack/react-query';
 
 // Schéma de validation Zod pour le formulaire de rendez-vous
 const appointmentSchema = z.object({
   email: z.string().email('Email du client requis et valide'),
-  barberId: z.string().nonempty('Le coiffeur est requis'),
-  haircutType: z.string().nonempty('La prestation est requise'),
+  estheticianId: z.string().nonempty('L\'esthéticienne est requise'),
+  estheticType: z.string().nonempty('Le service est requis'),
   appointmentDate: z.string().nonempty('La date est requise'),
   appointmentTime: z.string().nonempty('L\'heure est requise'),
 });
@@ -27,26 +27,26 @@ type AppointmentForm = z.infer<typeof appointmentSchema>;
 // Type pour les disponibilités
 interface AvailableTime {
   id: number;
-  barberId: string;
+  estheticianId: string;
   starTime: string;
   endTime: string;
   available: boolean;
 }
 
-const Appointments = () => {
-  const queryClient = useQueryClient(); // Initialisation de queryClient
+const AppointmentsEstheticians = () => {
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<EstheticianAppointment | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // Date par défaut : aujourd'hui
   const [availableTimes, setAvailableTimes] = useState<AvailableTime[]>([]);
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
 
   // Utilisation des hooks avec destructuring correct
-  const { appointments, createAppointment, updateAppointment, cancelAppointment, completeAppointment } = useAppointments();
-  const { barbers } = useBarbers();
+  const { estheticianAppointments, createEstheticianAppointment, updateEstheticianAppointment, cancelEstheticianAppointment, completeEstheticianAppointment } = useAppointmentEstheticians();
+  const { estheticians } = useEstheticians();
   const { clients } = useClients();
-  const { haircuts } = useHaircuts();
+  const { beautyServices } = useBeautyServices();
 
   const today = useMemo(() => new Date(), []);
 
@@ -77,12 +77,12 @@ const Appointments = () => {
     });
   };
 
-  // Récupérer les disponibilités pour un coiffeur et une date donnée
-  const fetchAvailability = async (barberId: string, date: string): Promise<void> => {
+  // Récupérer les disponibilités pour une esthéticienne et une date donnée
+  const fetchAvailability = async (estheticianId: string, date: string): Promise<void> => {
     setIsLoadingAvailability(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/availability/barber/${barberId}/slot?date=${date}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/availability/esthetician/${estheticianId}/slot?date=${date}`, {
         headers: token ? {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -116,21 +116,21 @@ const Appointments = () => {
     setAvailableTimes([]);
     setValue('appointmentTime', ''); // Réinitialiser l'heure sélectionnée
 
-    const barberId = watch('barberId');
-    if (barberId) {
-      fetchAvailability(barberId, date);
+    const estheticianId = watch('estheticianId');
+    if (estheticianId) {
+      fetchAvailability(estheticianId, date);
     }
   };
 
-  // Gérer le changement de coiffeur
-  const handleBarberChange = (barberId: string): void => {
-    if (selectedDate && barberId) {
-      fetchAvailability(barberId, selectedDate);
+  // Gérer le changement d'esthéticienne
+  const handleEstheticianChange = (estheticianId: string): void => {
+    if (selectedDate && estheticianId) {
+      fetchAvailability(estheticianId, selectedDate);
     }
   };
 
   // Ouvrir le modal de modification avec les données du rendez-vous sélectionné
-  const openEditModal = (appointment: Appointment): void => {
+  const openEditModal = (appointment: EstheticianAppointment): void => {
     setSelectedAppointment(appointment);
 
     // Trouver le client pour récupérer l'email
@@ -142,13 +142,13 @@ const Appointments = () => {
     const timeString = appointmentDateTime.toISOString().split('T')[1].substring(0, 5);
 
     setValue('email', client?.email || '');
-    setValue('barberId', appointment.barberId || '');
-    setValue('haircutType', appointment.haircutType || '');
+    setValue('estheticianId', appointment.estheticianId || '');
+    setValue('estheticType', appointment.estheticType || '');
     setValue('appointmentDate', dateString);
     setValue('appointmentTime', timeString);
 
     setSelectedDate(dateString);
-    fetchAvailability(appointment.barberId, dateString);
+    fetchAvailability(appointment.estheticianId, dateString);
     setIsModalOpen(true);
   };
 
@@ -174,21 +174,21 @@ const Appointments = () => {
     try {
       if (selectedAppointment) {
         // Données pour la mise à jour
-        const appointmentUpdateData: UpdateAppointmentData = {
+        const appointmentUpdateData: UpdateEstheticianAppointmentData = {
           id: selectedAppointment.id,
           email: data.email,
-          barberId: data.barberId,
-          haircutType: data.haircutType,
+          estheticianId: data.estheticianId,
+          estheticType: data.estheticType,
           appointmentTime: fullDateTime, // Envoyer la date en UTC
         };
 
         // Mettre à jour le rendez-vous
-        await updateAppointment.mutateAsync(appointmentUpdateData, {
+        await updateEstheticianAppointment.mutateAsync(appointmentUpdateData, {
           onSuccess: () => {
             toast.success('Rendez-vous mis à jour avec succès');
             setIsModalOpen(false);
             reset();
-            queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Invalider les requêtes
+            queryClient.invalidateQueries({ queryKey: ['estheticianAppointments'] });
           },
           onError: () => {
             toast.error('Erreur lors de la mise à jour du rendez-vous');
@@ -196,20 +196,20 @@ const Appointments = () => {
         });
       } else {
         // Données pour la création
-        const appointmentCreateData: CreateAppointmentData = {
+        const appointmentCreateData: CreateEstheticianAppointmentData = {
           email: data.email,
-          barberId: data.barberId,
-          haircutType: data.haircutType,
+          estheticianId: data.estheticianId,
+          estheticType: data.estheticType,
           appointmentTime: fullDateTime, // Envoyer la date en UTC
         };
 
         // Créer un nouveau rendez-vous
-        await createAppointment.mutateAsync(appointmentCreateData, {
+        await createEstheticianAppointment.mutateAsync(appointmentCreateData, {
           onSuccess: () => {
             toast.success('Rendez-vous créé avec succès');
             setIsModalOpen(false);
             reset();
-            queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Invalider les requêtes
+            queryClient.invalidateQueries({ queryKey: ['estheticianAppointments'] });
           },
           onError: () => {
             toast.error('Erreur lors de la création du rendez-vous');
@@ -224,10 +224,10 @@ const Appointments = () => {
   // Annuler un rendez-vous
   const handleCancel = async (id: string): Promise<void> => {
     try {
-      await cancelAppointment.mutateAsync(id, {
+      await cancelEstheticianAppointment.mutateAsync(id, {
         onSuccess: () => {
           toast.success('Rendez-vous annulé avec succès');
-          queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Invalider les requêtes
+          queryClient.invalidateQueries({ queryKey: ['estheticianAppointments'] });
         },
         onError: () => {
           toast.error('Erreur lors de l\'annulation du rendez-vous');
@@ -241,10 +241,10 @@ const Appointments = () => {
   // Terminer un rendez-vous
   const handleComplete = async (id: string): Promise<void> => {
     try {
-      await completeAppointment.mutateAsync(id, {
+      await completeEstheticianAppointment.mutateAsync(id, {
         onSuccess: () => {
           toast.success('Rendez-vous marqué comme terminé');
-          queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Invalider les requêtes
+          queryClient.invalidateQueries({ queryKey: ['estheticianAppointments'] });
         },
         onError: () => {
           toast.error('Erreur lors de la complétion du rendez-vous');
@@ -256,7 +256,7 @@ const Appointments = () => {
   };
 
   // Filtrer les rendez-vous en fonction de la recherche et de la date
-  const filteredAppointments = appointments.data?.filter((appointment: Appointment) => {
+  const filteredAppointments = estheticianAppointments.data?.filter((appointment: EstheticianAppointment) => {
     const appointmentDate = appointment.appointmentTime ? new Date(appointment.appointmentTime).toISOString().split('T')[0] : '';
     const matchesDate = selectedDate ? appointmentDate === selectedDate : true;
 
@@ -266,9 +266,9 @@ const Appointments = () => {
         (appointment.id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (appointment.clientFirstname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (appointment.clientLastname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (appointment.barberFirstname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (appointment.barberLastname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (appointment.haircutType?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+        (appointment.estheticianFirstname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (appointment.estheticianLastname?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (appointment.estheticType?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       )
     );
   });
@@ -276,7 +276,7 @@ const Appointments = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestion des rendez-vous</h1>
+        <h1 className="text-2xl font-bold">Gestion des rendez-vous (Esthéticiennes)</h1>
         <button
           onClick={() => {
             setSelectedAppointment(null);
@@ -317,13 +317,13 @@ const Appointments = () => {
                 Date
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Coiffeur
+                Esthéticienne
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Client
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Prestation
+                Service
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Statut
@@ -334,7 +334,7 @@ const Appointments = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAppointments?.map((appointment: Appointment) => (
+            {filteredAppointments?.map((appointment: EstheticianAppointment) => (
               <tr key={appointment.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{appointment.id || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -343,13 +343,13 @@ const Appointments = () => {
                     : 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {appointment.barberFirstname || 'N/A'} {appointment.barberLastname || 'N/A'}
+                  {appointment.estheticianFirstname || 'N/A'} {appointment.estheticianLastname || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {appointment.clientFirstname || 'N/A'} {appointment.clientLastname || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {appointment.haircutType || 'N/A'}
+                  {appointment.estheticType || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
@@ -387,12 +387,12 @@ const Appointments = () => {
                         Modifier
                       </button>
                       <button
-                      onClick={() => handleComplete(appointment.id)}
-                      className="text-green-600 hover:text-green-900 mr-2 flex items-center"
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Terminer
-                    </button>
+                        onClick={() => handleComplete(appointment.id)}
+                        className="text-green-600 hover:text-green-900 mr-2 flex items-center"
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Terminer
+                      </button>
                       <button
                         onClick={() => handleCancel(appointment.id)}
                         className="text-red-600 hover:text-red-900"
@@ -439,45 +439,45 @@ const Appointments = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Coiffeur
+                  Esthéticienne
                 </label>
                 <select
-                  {...register('barberId')}
+                  {...register('estheticianId')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                   onChange={(e) => {
                     const value = e.target.value;
-                    handleBarberChange(value);
+                    handleEstheticianChange(value);
                   }}
                 >
-                  <option value="">Sélectionner un coiffeur</option>
-                  {barbers.data?.map((barber: Barber) => (
-                    <option key={barber.id} value={barber.id}>
-                      {barber.firstname} {barber.lastname}
+                  <option value="">Sélectionner une esthéticienne</option>
+                  {estheticians.data?.map((esthetician: Esthetician) => (
+                    <option key={esthetician.id} value={esthetician.id}>
+                      {esthetician.firstname} {esthetician.lastname}
                     </option>
                   ))}
                 </select>
-                {errors.barberId && (
-                  <p className="text-red-600 text-sm mt-1">{errors.barberId.message}</p>
+                {errors.estheticianId && (
+                  <p className="text-red-600 text-sm mt-1">{errors.estheticianId.message}</p>
                 )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Prestation
+                  Service
                 </label>
                 <select
-                  {...register('haircutType')}
+                  {...register('estheticType')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 >
-                  <option value="">Sélectionner une prestation</option>
-                  {haircuts.data?.map((haircut: Haircut) => (
-                    <option key={haircut.id} value={haircut.type}>
-                      {haircut.type} - {haircut.price}FCFA
+                  <option value="">Sélectionner un service</option>
+                  {beautyServices.data?.map((service: BeautyService) => (
+                    <option key={service.id} value={service.type}>
+                      {service.type} - {service.price}FCFA
                     </option>
                   ))}
                 </select>
-                {errors.haircutType && (
-                  <p className="text-red-600 text-sm mt-1">{errors.haircutType.message}</p>
+                {errors.estheticType && (
+                  <p className="text-red-600 text-sm mt-1">{errors.estheticType.message}</p>
                 )}
               </div>
 
@@ -504,7 +504,7 @@ const Appointments = () => {
                 <select
                   {...register('appointmentTime')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                  disabled={!watch('barberId') || !selectedDate || isLoadingAvailability}
+                  disabled={!watch('estheticianId') || !selectedDate || isLoadingAvailability}
                 >
                   <option value="">
                     {isLoadingAvailability ? 'Chargement...' : 'Choisir une heure'}
@@ -523,8 +523,8 @@ const Appointments = () => {
                     <option value="">
                       {!selectedDate
                         ? "Veuillez d'abord sélectionner une date"
-                        : !watch('barberId')
-                        ? 'Veuillez sélectionner un coiffeur'
+                        : !watch('estheticianId')
+                        ? 'Veuillez sélectionner une esthéticienne'
                         : 'Aucun horaire disponible'}
                     </option>
                   )}
@@ -560,4 +560,4 @@ const Appointments = () => {
   );
 };
 
-export default Appointments;
+export default AppointmentsEstheticians;

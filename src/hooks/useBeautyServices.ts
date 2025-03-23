@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useAuth } from './useAuth';
 import axios, { AxiosResponse } from 'axios';
-import type { Haircut } from '../types';
+import type { BeautyService } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -32,7 +32,7 @@ const handleResponse = async <T>(response: AxiosResponse): Promise<T> => {
   return response.data;
 };
 
-export const useHaircuts = () => {
+export const useBeautyServices = () => {
   const queryClient = useQueryClient();
   const { getToken, isAuthenticated } = useAuth();
 
@@ -52,8 +52,8 @@ export const useHaircuts = () => {
     return instance;
   };
 
-  const haircuts = useQuery({
-    queryKey: ['haircuts'],
+  const beautyServices = useQuery({
+    queryKey: ['beautyServices'],
     queryFn: async () => {
       try {
         if (!isAuthenticated()) {
@@ -61,30 +61,30 @@ export const useHaircuts = () => {
         }
 
         const api = createApiInstance();
-        const response = await api.get<Haircut[]>('/haircut/all');
-        return handleResponse<Haircut[]>(response);
+        const response = await api.get<BeautyService[]>('/esthetic/all');
+        return handleResponse<BeautyService[]>(response);
       } catch (error) {
-        throw new Error('Erreur lors du chargement des prestations. Veuillez réessayer.');
+        throw new Error('Erreur lors du chargement des services de beauté. Veuillez réessayer.');
       }
     },
     enabled: isAuthenticated(),
   });
 
-  const createHaircut = useMutation({
-    mutationFn: async (haircut: Omit<Haircut, 'id'>) => {
+  const createBeautyService = useMutation({
+    mutationFn: async (beautyService: Omit<BeautyService, 'id'>) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour créer une prestation.');
+        throw new Error('Vous devez être connecté pour créer un service de beauté.');
       }
 
       const api = createApiInstance();
-      const response = await api.post<Haircut>('/haircut/create', haircut);
-      return handleResponse<Haircut>(response);
+      const response = await api.post<BeautyService>('/esthetic/create', beautyService);
+      return handleResponse<BeautyService>(response);
     },
-    onSuccess: (newHaircut: Haircut) => {
-      queryClient.setQueryData(['haircuts'], (oldData: Haircut[] | undefined) => {
-        return oldData ? [...oldData, newHaircut] : [newHaircut];
+    onSuccess: (newBeautyService: BeautyService) => {
+      queryClient.setQueryData(['beautyServices'], (oldData: BeautyService[] | undefined) => {
+        return oldData ? [...oldData, newBeautyService] : [newBeautyService];
       });
-      toast.success('Prestation créée avec succès.');
+      toast.success('Service de beauté créé avec succès.');
     },
     onError: (error: Error | unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
@@ -92,27 +92,27 @@ export const useHaircuts = () => {
     },
   });
 
-  const updateHaircut = useMutation({
-    mutationFn: async (haircut: Haircut) => {
+  const updateBeautyService = useMutation({
+    mutationFn: async (beautyService: BeautyService) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour modifier une prestation.');
+        throw new Error('Vous devez être connecté pour modifier un service de beauté.');
       }
 
-      if (haircut.id === undefined || haircut.id === null) {
-        throw new Error('Identifiant de la prestation manquant.');
+      if (beautyService.id === undefined || beautyService.id === null) {
+        throw new Error('Identifiant du service de beauté manquant.');
       }
 
       const api = createApiInstance();
-      const response = await api.put<Haircut>(`/haircut/${haircut.id}/update`, haircut);
-      return handleResponse<Haircut>(response);
+      const response = await api.put<BeautyService>(`/esthetic/${beautyService.id}/update`, beautyService);
+      return handleResponse<BeautyService>(response);
     },
-    onSuccess: (updatedHaircut: Haircut) => {
-      queryClient.setQueryData(['haircuts'], (oldData: Haircut[] | undefined) => {
-        return oldData?.map((haircut) =>
-          haircut.id === updatedHaircut.id ? updatedHaircut : haircut
+    onSuccess: (updatedBeautyService: BeautyService) => {
+      queryClient.setQueryData(['beautyServices'], (oldData: BeautyService[] | undefined) => {
+        return oldData?.map((service) =>
+          service.id === updatedBeautyService.id ? updatedBeautyService : service
         );
       });
-      toast.success('Prestation mise à jour avec succès.');
+      toast.success('Service de beauté mis à jour avec succès.');
     },
     onError: (error: Error | unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
@@ -120,21 +120,21 @@ export const useHaircuts = () => {
     },
   });
 
-  const deleteHaircut = useMutation({
-    mutationFn: async (haircutId: string) => {
+  const deleteBeautyService = useMutation({
+    mutationFn: async (beautyServiceId: string) => {
       if (!isAuthenticated()) {
-        throw new Error('Vous devez être connecté pour supprimer une prestation.');
+        throw new Error('Vous devez être connecté pour supprimer un service de beauté.');
       }
 
       const api = createApiInstance();
-      const response = await api.delete(`/haircut/${haircutId}/delete`);
+      const response = await api.delete(`/esthetic/${beautyServiceId}/delete`);
       return handleResponse<void>(response);
     },
-    onSuccess: (_, haircutId) => {
-      queryClient.setQueryData(['haircuts'], (oldData: Haircut[] | undefined) => {
-        return oldData?.filter((haircut) => haircut.id !== Number(haircutId));
+    onSuccess: (_, beautyServiceId) => {
+      queryClient.setQueryData(['beautyServices'], (oldData: BeautyService[] | undefined) => {
+        return oldData?.filter((service) => service.id !== Number(beautyServiceId));
       });
-      toast.success('Prestation supprimée avec succès.');
+      toast.success('Service de beauté supprimé avec succès.');
     },
     onError: (error: Error | unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
@@ -143,9 +143,9 @@ export const useHaircuts = () => {
   });
 
   return {
-    haircuts,
-    createHaircut,
-    updateHaircut,
-    deleteHaircut,
+    beautyServices,
+    createBeautyService,
+    updateBeautyService,
+    deleteBeautyService,
   };
 };

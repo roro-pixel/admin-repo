@@ -4,6 +4,7 @@ import {
   Scissors,
   Calendar,
   BarChart2,
+  Heart,
   Menu, 
   X, 
   Settings
@@ -17,9 +18,12 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/dashboard', icon: <BarChart2 />, label: 'Tableau de bord' },
     { path: '/barbers', icon: <Users />, label: 'Coiffeurs' },
-    { path: '/appointments', icon: <Calendar />, label: 'Rendez-vous' },
+    { path: '/estheticians', icon: <Users />, label: 'Esthéticiennes' },
+    { path: '/appointments', icon: <Calendar />, label: 'Rendez-vous des coiffeurs' },
+    { path: '/appointmentsEstheticians', icon: <Calendar />, label: 'Rendez-vous des esthéticiennes' },
     { path: '/clients', icon: <Users />, label: 'Clients' },
-    { path: '/services', icon: <Scissors />, label: 'Prestations' }, 
+    { path: '/services', icon: <Scissors />, label: 'Prestations pour coiffure' }, 
+    { path: '/beautyServices', icon: <Heart />, label: 'Prestations pour bien être' }, 
     { path: '/settings', icon: <Settings />, label: 'Paramètres' }, 
   ];
 

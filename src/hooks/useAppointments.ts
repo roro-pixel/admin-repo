@@ -53,7 +53,7 @@ export const useAppointments = () => {
     queryFn: async () => {
       try {
         const token = getToken();
-        const response = await api.get<Appointment[]>('/appointment/all', {
+        const response = await api.get<Appointment[]>('/appointment/barber/all', {
           headers: token ? {
             'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export const useAppointments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      toast.success('Rendez-vous créé avec succès');
+      // toast.success('Rendez-vous créé avec succès');
     },
     onError: (error) => {
       toast.error('Erreur lors de la création du rendez-vous');
@@ -107,7 +107,7 @@ export const useAppointments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      toast.success('Rendez-vous mis à jour avec succès');
+      // toast.success('Rendez-vous mis à jour avec succès');
     },
     onError: (error) => {
       toast.error('Erreur lors de la mise à jour du rendez-vous');
@@ -130,7 +130,7 @@ export const useAppointments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      toast.success('Rendez-vous annulé avec succès');
+      // toast.success('Rendez-vous annulé avec succès');
     },
     onError: (error) => {
       toast.error('Erreur lors de l\'annulation du rendez-vous');
@@ -153,7 +153,7 @@ export const useAppointments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      toast.success('Rendez-vous marqué comme terminé');
+      // toast.success('Rendez-vous marqué comme terminé');
     },
     onError: (error) => {
       toast.error('Erreur lors de la mise à jour du statut');

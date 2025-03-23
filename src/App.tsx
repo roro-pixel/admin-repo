@@ -2,16 +2,19 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/Layout/MainLayout';
 import ProtectedRoute from './components/Route_protected/ProtectedRoute';
-import { ToastContainer } from 'react-toastify'; // Importer ToastContainer
-import 'react-toastify/dist/ReactToastify.css'; // Importer les styles de Toastify
+import { ToastContainer } from 'react-toastify'; 
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Barbers = React.lazy(() => import('./pages/Barbers'));
+const Estheticians = React.lazy(() => import('./pages/Estheticians'));
 const Appointments = React.lazy(() => import('./pages/Appointments'));
+const AppointmentsEstheticians = React.lazy(() => import('./pages/AppointmentsEstheticians'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const Services = React.lazy(() => import('./pages/Services'));
+const BeautyServices = React.lazy(() => import('./pages/BeautyServices'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 
 // Composant de chargement
@@ -36,9 +39,12 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/barbers" element={<Barbers />} />
+              <Route path="/estheticians" element={<Estheticians />} />
               <Route path="/appointments" element={<Appointments />} />
+              <Route path="/appointmentsEstheticians" element={<AppointmentsEstheticians />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/services" element={<Services />} />
+              <Route path="/beautyServices" element={<BeautyServices />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
           </Route>
